@@ -1,5 +1,5 @@
 '''
-model2.py, v1.0.1, 17/07/06, by Max Murakami
+model2.py, v1.0.2, 17/07/06, by Max Murakami
     written in Python 2.7.12
 
 Agent class for simulating action selection with intrinsic motivation based on
@@ -43,11 +43,14 @@ Version history:
     - 1.0.1:
         - added reinit() method
         - record() and run() now always return data dict, independent of --output
+    - 1.0.2:
+        - run() now returns a deep copy of data dict
 '''
 
 import numpy as np
 import aux      # auxillary functions
 import cPickle
+import copy
 
 
 class Agent:
@@ -541,7 +544,7 @@ class Agent:
         if self.output:
             self.outputfile_txt.close()
 
-        return self.data
+        return copy.deepcopy(self.data)
 
 
 
