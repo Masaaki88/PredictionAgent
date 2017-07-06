@@ -1,5 +1,5 @@
-model2.py, v1.0, 17/06/30, by Max Murakami
-written in Python 2.7.12
+model2.py, v1.0.1, 17/07/06, by Max Murakami
+    written in Python 2.7.12
 
 Agent class for simulating action selection with intrinsic motivation based on
     information maximization. The model is based on Bolado-Gomez & Gurney 2013
@@ -37,3 +37,8 @@ Other files:
         - output_constants.txt contains constant values of object
         - output.txt contains variables of object over time
         - output.dat contains pickled dictionary with variables and constants
+
+Version history:
+    - 1.0.1:
+        - added reinit() method
+        - record() and run() now always return data dict, independent of --output
