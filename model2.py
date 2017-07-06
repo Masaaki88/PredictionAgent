@@ -1,5 +1,5 @@
 '''
-model2.py, v1.0.2, 17/07/06, by Max Murakami
+model2.py, v1.0.2.1, 17/07/06, by Max Murakami
     written in Python 2.7.12
 
 Agent class for simulating action selection with intrinsic motivation based on
@@ -45,6 +45,8 @@ Version history:
         - record() and run() now always return data dict, independent of --output
     - 1.0.2:
         - run() now returns a deep copy of data dict
+    - 1.0.2.1:
+        - removed reinit() method
 '''
 
 import numpy as np
@@ -273,15 +275,6 @@ class Agent:
             print 'T_max:', self.T_max
             print 'output:', self.output
             print 'Start time is', time_string
-
-
-
-
-    def reinit(self, initial_int_sal=None, initial_probs=None):
-        self.__init__(self, initial_int_sal=initial_int_sal, initial_probs=initial_probs,
-            exploration_rate=self.exploration_rate, learning_speed=self.learning_speed, 
-            hab_slowness=self.hab_slowness, T_max=self.T_max, verbose=self.verbose, 
-            output=self.output)
 
 
     

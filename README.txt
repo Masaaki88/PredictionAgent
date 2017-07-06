@@ -1,4 +1,4 @@
-model2.py, v1.0.2, 17/07/06, by Max Murakami
+model2.py, v1.0.2.1, 17/07/06, by Max Murakami
     written in Python 2.7.12
 
 Agent class for simulating action selection with intrinsic motivation based on
@@ -44,3 +44,5 @@ Version history:
         - record() and run() now always return data dict, independent of --output
     - 1.0.2:
         - run() now returns a deep copy of data dict
+    - 1.0.2.1:
+        - removed reinit() method

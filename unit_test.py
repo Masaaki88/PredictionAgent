@@ -1,5 +1,5 @@
 '''
-unit test for model2 v1.0.2, 17/07/06, by Max Murakami
+unit test for model2 v1.0.2.1, 17/07/06, by Max Murakami
 '''
 
 import numpy as np
