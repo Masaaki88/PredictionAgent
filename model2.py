@@ -1,5 +1,5 @@
 '''
-model2.py, v1.0, 17/06/30, by Max Murakami
+model2.py, v1.0.1, 17/07/06, by Max Murakami
     written in Python 2.7.12
 
 Agent class for simulating action selection with intrinsic motivation based on
@@ -38,6 +38,11 @@ Other files:
         - output_constants.txt contains constant values of object
         - output.txt contains variables of object over time
         - output.dat contains pickled dictionary with variables and constants
+
+Version history:
+    - 1.0.1:
+        - added reinit() method
+        - record() and run() now always return data dict, independent of --output
 '''
 
 import numpy as np
@@ -47,7 +52,7 @@ import cPickle
 
 class Agent:
     def __init__(self, initial_int_sal=None, initial_probs=None, exploration_rate=1.,
-        learning_speed=0.9, hab_slowness=0.9, T_max=int(1e4), verbose=True, output=True):
+        learning_speed=0.9, hab_slowness=0.9, T_max=int(1e4), verbose=False, output=False):
         '''
         constructor
 
@@ -247,7 +252,7 @@ class Agent:
 
 
         self.random_numbers = np.random.rand(T_max)
-        self.total_saliences = self.int_sal + self.nov_sal
+        self.tot_sal = self.int_sal + self.nov_sal
 
         self.verbose = verbose
 
@@ -258,7 +263,7 @@ class Agent:
             print 'N_actions:', self.N_actions
             print 'initial_probs:', self.initial_probs
             print 'nov_sal:', self.nov_sal
-            print 'total_saliences:', self.total_saliences
+            print 'tot_sal:', self.tot_sal
             print 'exploration_rate:', self.exploration_rate
             print 'learning_speed:', self.learning_speed
             print 'hab_slowness:', self.hab_slowness
@@ -278,24 +283,24 @@ class Agent:
 
     
 
-    def select_action(self, total_saliences):
+    def select_action(self, tot_sal):
         '''
         softmax action selection
 
-        total_saliences is ndarray of combined intrinsic and novelty saliences (ndarray of floats)
+        tot_sal is ndarray of combined intrinsic and novelty saliences (ndarray of floats)
 
         returns i_selected_action, which is index of selected action (int)
         '''
 
-        aux.check_that_1d_float_array(total_saliences, 'total_saliences')
+        aux.check_that_1d_float_array(tot_sal, 'tot_sal')
 
-        assert len(total_saliences)==self.N_actions,\
+        assert len(tot_sal)==self.N_actions,\
             "\nLength of salience vector input to select_action() ({}) does not match "\
-            "number of actions ({})!".format(len(total_saliences), self.N_actions)
+            "number of actions ({})!".format(len(tot_sal), self.N_actions)
 
 
         ###### actual softmax
-        action_probabilities = np.exp(total_saliences/self.exploration_rate)
+        action_probabilities = np.exp(tot_sal/self.exploration_rate)
         action_probabilities /= action_probabilities.sum()
             # normalize entries
 
@@ -348,7 +353,7 @@ class Agent:
         env_response is environment response to action (binary int)
         probs is current prediction variables (ndarray of floats)
 
-        new_probs is updated prediction variables (ndarray of floats)
+        returns: new_probs, updated prediction variables (ndarray of floats)
         '''
         assert aux.isNotFalse(i_action),\
             "\nInput 'i_action' to update_predictions() is False/None!"
@@ -387,7 +392,8 @@ class Agent:
 
         probs is ndarray of contingency predictions, i.e. probabilities (ndarray of floats)
 
-        nov_saliences contains novelty saliences, i.e. expected information per action (ndarray of floats)
+        returns: nov_saliences, contains novelty saliences, 
+            i.e. expected information per action (ndarray of floats)
         '''
 
         aux.check_that_1d_float_array(probs, 'probs')
@@ -416,7 +422,7 @@ class Agent:
         i_select is index of selected action (int)
         int_sal is previous intrinsic saliences (ndarray of floats)
 
-        int_sal_new is updated intrinsic saliences (ndarray of floats)
+        returns: int_sal_new, updated intrinsic saliences (ndarray of floats)
         '''
         assert aux.isNotFalse(i_select),\
             "\nInput 'i_select' to habituation() is False/None!"
@@ -455,11 +461,19 @@ class Agent:
         data = self.data.copy()
         data['i_select'][self.t] = self.i_select
         data['env_response'][self.t] = self.response
+        if self.verbose:
+            print "recording:\n\tdata['i_select'][{}] = {}".format(self.t, self.i_select)
+            print "\tdata['env_response'][{}] = {}".format(self.t, self.response)
         for i_action in xrange(self.N_actions):
             data['int_sal'][i_action][self.t] = self.int_sal[i_action]
             data['nov_sal'][i_action][self.t] = self.nov_sal[i_action]
-            data['tot_sal'][i_action][self.t] = self.total_saliences[i_action]
+            data['tot_sal'][i_action][self.t] = self.tot_sal[i_action]
             data['probs'][i_action][self.t] = self.probs[i_action]
+            if self.verbose:
+                print "\tdata['int_sal'][{}][{}] = {}".format(i_action, self.t, self.int_sal[i_action])
+                print "\tdata['nov_sal'][{}][{}] = {}".format(i_action, self.t, self.nov_sal[i_action])
+                print "\tdata['tot_sal'][{}][{}] = {}".format(i_action, self.t, self.tot_sal[i_action])
+                print "\tdata['probs'][{}][{}] = {}".format(i_action, self.t, self.probs[i_action])
 
         if self.output:
             outputfile_dat = open(self.outputfilename_dat, 'wb')
@@ -468,12 +482,13 @@ class Agent:
 
             # output text file
             self.outputfile_txt.write('\n{}\t{}\t{}'.format(self.t, self.i_select, self.response))
-            for item in [self.int_sal, self.nov_sal, self.total_saliences, self.probs]:
+            for item in [self.int_sal, self.nov_sal, self.tot_sal, self.probs]:
                 for i_action in xrange(self.N_actions):
                     self.outputfile_txt.write('\t{}'.format(item[i_action]))
             self.outputfile_txt.flush()
 
         return data
+
 
 
 
@@ -489,7 +504,7 @@ class Agent:
                 print 'Time step:', self.t
 
             # action selection
-            self.i_select = self.select_action(self.total_saliences)
+            self.i_select = self.select_action(self.tot_sal)
             if self.verbose:
                 print 'Agent performing action', self.i_select
         
@@ -514,9 +529,9 @@ class Agent:
                 print 'Habituated intrinsic saliences:', self.int_sal
 
             # combining saliences
-            self.total_saliences = self.nov_sal + self.int_sal
+            self.tot_sal = self.nov_sal + self.int_sal
             if self.verbose:
-                print 'Combined saliences:', self.total_saliences
+                print 'Combined saliences:', self.tot_sal
 
             # record variables
             self.data = self.record()

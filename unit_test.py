@@ -1,5 +1,5 @@
 '''
-unit test for model2 v1.0, 17/06/30, by Max Murakami
+unit test for model2 v1.0.1, 17/07/06, by Max Murakami
 '''
 
 import numpy as np
@@ -9,7 +9,7 @@ import argparse
 
 # this determines the verbosity of the Agent's methods during testing
 # -> use command line flag -v to turn on verbosity of the unit test itself
-VERBOSE = False     
+VERBOSE = False
 
 class TestAgentClass(unittest.TestCase):
 
@@ -312,7 +312,7 @@ class TestAgentClass(unittest.TestCase):
 
         MyAgent.t = 2
         MyAgent.i_select = 1
-        MyAgent.env_response = 1
+        MyAgent.response = 1
         MyAgent.int_sal = np.array([0.4, 0.3])
         MyAgent.nov_sal = np.array([0.3, 0.2])
         MyAgent.tot_sal = np.array([0.2, 0.1])
@@ -342,14 +342,17 @@ class TestAgentClass(unittest.TestCase):
             self.assertEqual(data[key].ndim, 1)
             self.assertTrue(np.isfinite(data[key]).all())
             self.assertEqual(data[key].dtype, int)
+            self.assertTrue((data[key] > -1).all())
+            self.assertTrue((data[key] < 2).all())
         for key in ['int_sal', 'nov_sal', 'tot_sal', 'probs']:
             self.assertIsNotNone(data[key])
             self.assertIsInstance(data[key], np.ndarray)
             self.assertEqual(data[key].ndim, 2)
-            self.assertEqual(len(data[key]), T_max)
-            self.assertEqual(len(data[key][0]), 2)
+            self.assertEqual(len(data[key]), 2)
+            self.assertEqual(len(data[key][0]), T_max)
             self.assertEqual(data[key].dtype, float)
             self.assertTrue(np.isfinite(data[key]).all())
+            self.assertTrue((data[key] >= 0.0).all())
 
         # check specific values
         self.assertAlmostEqual(data['exploration_rate'], exploration_rate)
@@ -357,18 +360,78 @@ class TestAgentClass(unittest.TestCase):
         self.assertAlmostEqual(data['hab_slowness'], hab_slowness)
         self.assertEqual(data['i_select'][2], 1)
         self.assertEqual(data['env_response'][2], 1)
-        self.assertAlmostEqual(data['int_sal'][2][0], 0.4)
-        self.assertAlmostEqual(data['int_sal'][2][1], 0.3)
-        self.assertAlmostEqual(data['nov_sal'][2][0], 0.3)
-        self.assertAlmostEqual(data['nov_sal'][2][1], 0.2)
-        self.assertAlmostEqual(data['tot_sal'][2][0], 0.2)
-        self.assertAlmostEqual(data['tot_sal'][2][1], 0.1)
-        self.assertAlmostEqual(data['probs'][2][0], 0.1)
-        self.assertAlmostEqual(data['probs'][2][1], 0.0)
-        self.assertAlmostEqual(data['int_sal'][0][0], 0.0)
-        self.assertAlmostEqual(data['int_sal'][0][1], 1.0)
-        self.assertAlmostEqual(data['probs'][0][0], 0.55)
-        self.assertAlmostEqual(data['probs'][0][1], 0.66)
+        self.assertAlmostEqual(data['int_sal'][0][2], 0.4)
+        self.assertAlmostEqual(data['int_sal'][1][2], 0.3)
+        self.assertAlmostEqual(data['nov_sal'][0][2], 0.3)
+        self.assertAlmostEqual(data['nov_sal'][1][2], 0.2)
+        self.assertAlmostEqual(data['tot_sal'][0][2], 0.2)
+        self.assertAlmostEqual(data['tot_sal'][1][2], 0.1)
+        self.assertAlmostEqual(data['probs'][0][2], 0.1)
+        self.assertAlmostEqual(data['probs'][1][2], 0.0)
+
+
+
+    #### run()
+
+    def test_run_output(self):
+        # test output of run method
+
+        T_max = 2
+        exploration_rate = 2.0
+        learning_speed = 0.8
+        hab_slowness = 0.9
+        initial_int_sal = np.array([0.0, 1.0])
+        initial_probs = np.array([0.55, 0.66])
+
+        MyAgent = model2.Agent(initial_int_sal=initial_int_sal,
+            initial_probs=initial_probs, T_max=T_max,
+            exploration_rate=exploration_rate, learning_speed=learning_speed,
+            hab_slowness=hab_slowness, verbose=VERBOSE)
+
+        data = MyAgent.run()
+
+
+        # check generic properties
+        self.assertIsNotNone(data)
+        self.assertIsInstance(data, dict)
+
+        test_keys = ['exploration_rate', 'learning_speed', 'hab_slowness', 'i_select',
+            'env_response', 'int_sal', 'nov_sal', 'tot_sal', 'probs']
+        data_keys = data.keys()
+
+        self.assertIsNotNone(data_keys)
+        self.assertIsInstance(data_keys, list)
+        self.assertEqual(len(data_keys), len(test_keys))
+        self.assertItemsEqual(data_keys, test_keys)
+        
+        for key in ['exploration_rate', 'learning_speed', 'hab_slowness']:
+            self.assertIsNotNone(data[key])
+            self.assertIsInstance(data[key], float)
+            self.assertGreater(data[key], 0.0)
+        for key in ['i_select', 'env_response']:
+            self.assertIsNotNone(data[key])
+            self.assertIsInstance(data[key], np.ndarray)
+            self.assertEqual(len(data[key]), T_max)
+            self.assertEqual(data[key].ndim, 1)
+            self.assertTrue(np.isfinite(data[key]).all())
+            self.assertEqual(data[key].dtype, int)
+            self.assertTrue((data[key] > -1).all())
+            self.assertTrue((data[key] < 2).all())
+        for key in ['int_sal', 'nov_sal', 'tot_sal', 'probs']:
+            self.assertIsNotNone(data[key])
+            self.assertIsInstance(data[key], np.ndarray)
+            self.assertEqual(data[key].ndim, 2)
+            self.assertEqual(len(data[key]), 2)
+            self.assertEqual(len(data[key][0]), T_max)
+            self.assertEqual(data[key].dtype, float)
+            self.assertTrue(np.isfinite(data[key]).all())
+            self.assertTrue((data[key] >= 0.0).all())
+
+
+        # check specific values
+        self.assertAlmostEqual(data['exploration_rate'], exploration_rate)
+        self.assertAlmostEqual(data['learning_speed'], learning_speed)
+        self.assertAlmostEqual(data['hab_slowness'], hab_slowness)
         
 
 
