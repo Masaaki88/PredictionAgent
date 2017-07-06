@@ -1,4 +1,4 @@
-model2.py, v1.0.2.1, 17/07/06, by Max Murakami
+model2.py, v1.0.2.2, 17/07/06, by Max Murakami
     written in Python 2.7.12
 
 Agent class for simulating action selection with intrinsic motivation based on
@@ -25,6 +25,7 @@ Usage:
             -> time constant of novelty salience
         - hab_slowness: the higher, the less intrinsic saliences decrease due to habituation
             -> time constant of intrinsic salience
+            (accepts different values for each action, specify as ndarray)
     - These command line arguments are available if you run this script from the terminal:
         - v: turns on verbose mode
         - o: turns on file output mode
@@ -39,10 +40,13 @@ Other files:
         - output.dat contains pickled dictionary with variables and constants
 
 Version history:
+    - 1.0.2.2:
+        - hab_slowness argument of constructor now accepts ndarray with different
+            values for each action
+    - 1.0.2.1:
+        - removed reinit() method
+    - 1.0.2:
+        - run() now returns a deep copy of data dict
     - 1.0.1:
         - added reinit() method
         - record() and run() now always return data dict, independent of --output
-    - 1.0.2:
-        - run() now returns a deep copy of data dict
-    - 1.0.2.1:
-        - removed reinit() method

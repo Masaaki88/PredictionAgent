@@ -1,5 +1,5 @@
 '''
-unit test for model2 v1.0.2.1, 17/07/06, by Max Murakami
+unit test for model2 v1.0.2.2, 17/07/06, by Max Murakami
 '''
 
 import numpy as np
@@ -18,6 +18,7 @@ class TestAgentClass(unittest.TestCase):
     def test_constructor_args(self):
         # test types of Agent constructor arguments:
         #   initial_int_sal, initial_probs, exploration_rate
+        # Agent has 4 actions by default
         
         # bad initial_int_sal values
         initial_int_sal_args = [2.2, False, '2', (2,3), [], np.array([]), ['d'], np.array(['s']), np.array([True])]
@@ -48,10 +49,11 @@ class TestAgentClass(unittest.TestCase):
                 MyAgent = model2.Agent(learning_speed=arg, verbose=VERBOSE)
 
         # bad hab_slowness arguments
-        hab_slowness_args = [False, '0.5', [0.5], (0.4, 0.2), np.array(0.4), 0.0, 1.0]
+        hab_slowness_args = [False, '0.5', [0.5], (0.4, 0.2), np.array(0.4), 0.0, 1.0, np.array([0.0,0.2]),
+            np.array([0.1,1.0])]
         for arg in hab_slowness_args:
             with self.assertRaises(AssertionError):
-                MyAgent = model2.Agent(hab_slowness=arg, verbose=VERBOSE)
+                MyAgent = model2.Agent(initial_int_sal=np.arange(2.), hab_slowness=arg, verbose=VERBOSE)
 
         # bad T_max arguments
         T_max_args = ['2', [2], (2,2), np.array([2]), False, 2.0]
@@ -252,8 +254,7 @@ class TestAgentClass(unittest.TestCase):
         # bad int_sal arguments
         int_sal_args = ['1.0, 2.0', [1.0, 2.0], (1.0, 2.0), 1.0, np.array([1,2,3]),
             np.array([False, False, False]), np.array(['1.0', '2.0', '3.0']),
-            np.array([1.0, 2.0]), np.array([-1.0, 1.0, 2.0]), np.arange(1.,4.,1.),
-            np.array([[1.0, 2.0, 1.0]])]
+            np.array([1.0, 2.0]), np.array([-1.0, 1.0, 2.0])]
         for arg in int_sal_args:
             with self.assertRaises(AssertionError):
                 MyAgent.habituation(0, arg)
@@ -262,9 +263,11 @@ class TestAgentClass(unittest.TestCase):
     def test_habituation_output(self):
         # test output of habituation method
 
-        MyAgent = model2.Agent(initial_int_sal=np.arange(2.), hab_slowness=0.5, verbose=VERBOSE)
+        hab_slowness = np.array([0.5, 0.8])
 
-        int_sal = np.array([0.0, 1.0])
+        MyAgent = model2.Agent(initial_int_sal=np.arange(2.), hab_slowness=hab_slowness, verbose=VERBOSE)
+
+        int_sal = np.array([1.0, 0.7])
         int_sal = MyAgent.habituation(0, int_sal)
 
         # check generic properties
@@ -276,8 +279,8 @@ class TestAgentClass(unittest.TestCase):
         self.assertEqual(int_sal.dtype, float)
 
         # check specific values
-        self.assertAlmostEqual(int_sal[0], 0.0)
-        self.assertAlmostEqual(int_sal[1], 1.0)
+        self.assertAlmostEqual(int_sal[0], 1.0*0.5)
+        self.assertAlmostEqual(int_sal[1], 0.7)
 
         for i in xrange(1,10):
             int_sal = MyAgent.habituation(1, int_sal)
@@ -291,8 +294,8 @@ class TestAgentClass(unittest.TestCase):
             self.assertEqual(int_sal.dtype, float)
 
             # check specific values
-            self.assertAlmostEqual(int_sal[0], 0.0)
-            self.assertAlmostEqual(int_sal[1], 0.5**i)
+            self.assertAlmostEqual(int_sal[0], 0.5)
+            self.assertAlmostEqual(int_sal[1], 0.7*(0.8**i))
 
 
 
@@ -304,7 +307,7 @@ class TestAgentClass(unittest.TestCase):
         T_max = 10
         exploration_rate = 2.0
         learning_speed = 0.8
-        hab_slowness = 0.9
+        hab_slowness = np.array([0.9, 0.7])
 
         MyAgent = model2.Agent(initial_int_sal=np.arange(2.), initial_probs=np.array([0.55,0.66]),
             T_max=T_max, exploration_rate=exploration_rate, learning_speed=learning_speed,
@@ -331,7 +334,12 @@ class TestAgentClass(unittest.TestCase):
         self.assertEqual(len(data_keys), len(keys))  
         self.assertItemsEqual(data_keys, keys)
 
-        for key in ['exploration_rate', 'learning_speed', 'hab_slowness']:
+        self.assertIsNotNone(data['hab_slowness'])
+        self.assertIsInstance(data['hab_slowness'], np.ndarray)
+        self.assertEqual(data['hab_slowness'].dtype, float)
+        self.assertEqual(data['hab_slowness'].ndim, 1)
+        self.assertEqual(len(data['hab_slowness']), 2)
+        for key in ['exploration_rate', 'learning_speed']:
             self.assertIsNotNone(data[key])
             self.assertIsInstance(data[key], float)
             self.assertGreater(data[key], 0.0)
@@ -357,7 +365,8 @@ class TestAgentClass(unittest.TestCase):
         # check specific values
         self.assertAlmostEqual(data['exploration_rate'], exploration_rate)
         self.assertAlmostEqual(data['learning_speed'], learning_speed)
-        self.assertAlmostEqual(data['hab_slowness'], hab_slowness)
+        self.assertAlmostEqual(data['hab_slowness'][0], hab_slowness[0])
+        self.assertAlmostEqual(data['hab_slowness'][1], hab_slowness[1])
         self.assertEqual(data['i_select'][2], 1)
         self.assertEqual(data['env_response'][2], 1)
         self.assertAlmostEqual(data['int_sal'][0][2], 0.4)
@@ -379,7 +388,7 @@ class TestAgentClass(unittest.TestCase):
         T_max = 2
         exploration_rate = 2.0
         learning_speed = 0.8
-        hab_slowness = 0.9
+        hab_slowness = np.array([0.9, 0.7])
         initial_int_sal = np.array([0.0, 1.0])
         initial_probs = np.array([0.55, 0.66])
 
@@ -404,7 +413,12 @@ class TestAgentClass(unittest.TestCase):
         self.assertEqual(len(data_keys), len(test_keys))
         self.assertItemsEqual(data_keys, test_keys)
         
-        for key in ['exploration_rate', 'learning_speed', 'hab_slowness']:
+        self.assertIsNotNone(data['hab_slowness'])
+        self.assertIsInstance(data['hab_slowness'], np.ndarray)
+        self.assertEqual(data['hab_slowness'].dtype, float)
+        self.assertEqual(data['hab_slowness'].ndim, 1)
+        self.assertEqual(len(data['hab_slowness']), 2)
+        for key in ['exploration_rate', 'learning_speed']:
             self.assertIsNotNone(data[key])
             self.assertIsInstance(data[key], float)
             self.assertGreater(data[key], 0.0)
@@ -431,7 +445,8 @@ class TestAgentClass(unittest.TestCase):
         # check specific values
         self.assertAlmostEqual(data['exploration_rate'], exploration_rate)
         self.assertAlmostEqual(data['learning_speed'], learning_speed)
-        self.assertAlmostEqual(data['hab_slowness'], hab_slowness)
+        self.assertAlmostEqual(data['hab_slowness'][0], hab_slowness[0])
+        self.assertAlmostEqual(data['hab_slowness'][1], hab_slowness[1])
         
 
 

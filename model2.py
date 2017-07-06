@@ -1,5 +1,5 @@
 '''
-model2.py, v1.0.2.1, 17/07/06, by Max Murakami
+model2.py, v1.0.2.2, 17/07/06, by Max Murakami
     written in Python 2.7.12
 
 Agent class for simulating action selection with intrinsic motivation based on
@@ -26,6 +26,7 @@ Usage:
             -> time constant of novelty salience
         - hab_slowness: the higher, the less intrinsic saliences decrease due to habituation
             -> time constant of intrinsic salience
+            (accepts different values for each action, specify as ndarray)
     - These command line arguments are available if you run this script from the terminal:
         - v: turns on verbose mode
         - o: turns on file output mode
@@ -40,13 +41,16 @@ Other files:
         - output.dat contains pickled dictionary with variables and constants
 
 Version history:
+    - 1.0.2.2:
+        - hab_slowness argument of constructor now accepts ndarray with different
+            values for each action
+    - 1.0.2.1:
+        - removed reinit() method
+    - 1.0.2:
+        - run() now returns a deep copy of data dict
     - 1.0.1:
         - added reinit() method
         - record() and run() now always return data dict, independent of --output
-    - 1.0.2:
-        - run() now returns a deep copy of data dict
-    - 1.0.2.1:
-        - removed reinit() method
 '''
 
 import numpy as np
@@ -87,7 +91,7 @@ class Agent:
                 print ' exploration_rate:', exploration_rate
             if isinstance(learning_speed, np.ndarray) and learning_speed!=0.9:
                 print ' learning_speed:', learning_speed
-            if isinstance(hab_slowness, np.ndarray) and hab_slowness!=0.9:
+            if isinstance(hab_slowness, np.ndarray) or hab_slowness!=0.9:
                 print ' hab_slowness:', hab_slowness
             if isinstance(T_max, np.ndarray) or T_max != 1e4:
                 print ' T_max:', T_max
@@ -190,12 +194,23 @@ class Agent:
             ####### hab_slowness
         assert aux.isNotFalse(hab_slowness),\
             "\nInput 'hab_slowness' of Agent constructor is False/None!"
-        assert isinstance(hab_slowness, float),\
+        assert isinstance(hab_slowness, float) or isinstance(hab_slowness, np.ndarray),\
             "\nInput 'hab_slowness' ({}) of Agent constructor has wrong type ({})!"\
-            "\nType must be 'float'!".format(hab_slowness, type(hab_slowness))
-        assert hab_slowness > 0.0 and hab_slowness < 1.0,\
-            "\nInput 'hab_slowness' ({}) of Agent constructor is out of bounds!"\
-            "\nhab_slowness must be in ]0;1[!".format(hab_slowness)
+            "\nType must be 'float' or 'ndarray'!".format(hab_slowness, type(hab_slowness))
+        if isinstance(hab_slowness, float):
+            assert hab_slowness > 0.0 and hab_slowness < 1.0,\
+                "\nInput 'hab_slowness' ({}) of Agent constructor is out of bounds!"\
+                "\nhab_slowness must be in ]0;1[!".format(hab_slowness)
+            hab_slowness = np.ones([self.N_actions]) * hab_slowness
+        elif isinstance(hab_slowness, np.ndarray):
+            aux.check_that_1d_float_array(hab_slowness, 'hab_slowness')
+            assert len(hab_slowness) == self.N_actions,\
+                "\nInput 'hab_slowness' ({}) of Agent constructor doesn't match number "\
+                "of actions!\nLength is {} and must be {}!".format(hab_slowness,
+                    len(hab_slowness), self.N_actions)
+            assert (hab_slowness < 1.0).all() and (hab_slowness > 0.0).all(),\
+                "\nInput 'hab_slowness' ({}) of Agent constructor contains invalid entries!"\
+                "\nEntries must be in ]0;1[!".format(hab_slowness)            
 
         self.hab_slowness = hab_slowness
 
@@ -434,12 +449,9 @@ class Agent:
             "\nLength is {} and must be {}!".format(int_sal, len(int_sal), self.N_actions)
         assert (int_sal >= 0.0).all(),\
             "\nInput 'int_sal' ({}) to habituation() contains negative entries!".format(int_sal)
-        assert (int_sal <= self.initial_int_sal).all(),\
-            "\nInput 'int_sal' ({}) to habituation() is larger than "\
-            "'initial_int_sal' ({})!".format(int_sal, self.initial_int_sal)
 
         int_sal_new = int_sal.copy()
-        int_sal_new[i_select] = int_sal[i_select] * self.hab_slowness
+        int_sal_new[i_select] = int_sal[i_select] * self.hab_slowness[i_select]
 
         return int_sal_new
 
