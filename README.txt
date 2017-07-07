@@ -18,6 +18,7 @@ Usage:
         Both initial_int_sal and initial_probs must be 1 dimensional float ndarrays.
         Their length determines the number of actions (lengths must match if both
         are specified).
+    - run() the object. Simulation data are returned as dictionary.
     - Free parameters:
         - exploration_rate: the higher, the more likely the agent executes actions
             with low saliences (softmax exploration)
