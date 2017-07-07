@@ -61,7 +61,8 @@ import copy
 
 class Agent:
     def __init__(self, initial_int_sal=None, initial_probs=None, exploration_rate=1.,
-        learning_speed=0.9, hab_slowness=0.9, T_max=int(1e4), verbose=False, output=False):
+        learning_speed=0.9, hab_slowness=0.9, failure_rate=0.0, T_max=int(1e4),
+        verbose=False, output=False):
         '''
         constructor
 
@@ -72,8 +73,10 @@ class Agent:
         exploration_rate is used for softmax action selection
             type is float, default is 1
         learning_speed is adaptation rate of prediction system (float), default is 0.9
-        hab_slowness is factor for action habituation (float), default is 0.9,
+        hab_slowness is factor for action habituation (float or ndarray), default is 0.9,
             high means slow habituation, low means fast habituation
+        failure_rate is probability with which a contingent response fails to be delivered
+            type is float, default is 0.0
         T_max is number of time steps (int), default is 1e4
         verbose is verbose output mode
             type is boolean, default is True
@@ -93,6 +96,8 @@ class Agent:
                 print ' learning_speed:', learning_speed
             if isinstance(hab_slowness, np.ndarray) or hab_slowness!=0.9:
                 print ' hab_slowness:', hab_slowness
+            if isinstance(failure_rate, np.ndarray) or failure_rate!=0.0:
+                print ' failure_rate:', failure_rate
             if isinstance(T_max, np.ndarray) or T_max != 1e4:
                 print ' T_max:', T_max
 
@@ -216,6 +221,19 @@ class Agent:
 
 
 
+            ####### failure_rate
+        assert aux.isNotFalse(failure_rate)
+        assert isinstance(failure_rate, float),\
+            "\nInput 'failure_rate' ({}) of Agent constructor has wrong type ({})!"\
+            "\nType must be 'float'!".format(failure_rate, type(failure_rate))
+        assert failure_rate >= 0.0 and failure_rate <= 1.0,\
+            "\nInput 'failure_rate' ({}) is invalid!"\
+            "\nfailure_rate must be in [0.0; 1.0]!".format(failure_rate)
+
+        self.failure_rate = failure_rate
+
+
+
             ####### T_max
         assert isinstance(T_max, int),\
             "\nInput 'T_max' ({}) of Agent constructor has wrong type ({})!"\
@@ -238,7 +256,8 @@ class Agent:
 
         # dictionary for storing all data
         self.data = {'exploration_rate':self.exploration_rate,
-            'learning_speed':self.learning_speed, 'hab_slowness':self.hab_slowness}
+            'learning_speed':self.learning_speed, 'hab_slowness':self.hab_slowness,
+            'failure_rate':self.failure_rate}
         for label in ['int_sal', 'nov_sal', 'tot_sal', 'probs']:
             self.data.update({label:np.zeros([self.N_actions, self.T_max])})
         for label in ['i_select', 'env_response']:
@@ -264,8 +283,10 @@ class Agent:
 
                 # write constants
             outputfile_txt_const.write('Start time:\t{}\nExploration rate:\t{}\nLearning speed:\t{}'\
-                '\nHabituation slowness:\t{}'.format(time_string, self.exploration_rate,
-                self.learning_speed, self.hab_slowness))
+                '\nFailure rate:\t{}\nHabituation slowness:'.format(time_string, self.exploration_rate,
+                self.learning_speed, self.failure_rate))
+            for i_action in xrange(self.N_actions):
+                outputfile_txt_const.write('\t{}'.format(self.hab_slowness[i_action]))
             outputfile_txt_const.close()
 
 
@@ -287,6 +308,7 @@ class Agent:
             print 'exploration_rate:', self.exploration_rate
             print 'learning_speed:', self.learning_speed
             print 'hab_slowness:', self.hab_slowness
+            print 'failure_rate:', self.failure_rate
             print 'T_max:', self.T_max
             print 'output:', self.output
             print 'Start time is', time_string
@@ -344,12 +366,16 @@ class Agent:
             "\nInput 'i_action' ({}) of environment_response() has wrong value!"\
             "\ni_action must be in range({})!".format(i_action, self.N_actions)
 
-        if i_action == 0:
-            return 1
-        elif i_action == 1:
-            if self.random_numbers[self.t] > 0.5:
+        if i_action == 1:
+            if self.random_numbers[self.t] >= self.failure_rate:
+                if self.verbose:
+                    print 'Contingent response succeeds ({} >= {})'.format(self.random_numbers[self.t],
+                        self.failure_rate)
                 return 1
             else:
+                if self.verbose:
+                    print 'Contingent response fails ({} < {})'.format(self.random_numbers[self.t],
+                        self.failure_rate)
                 return 0
         else:
             return 0

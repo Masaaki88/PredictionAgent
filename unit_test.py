@@ -55,6 +55,12 @@ class TestAgentClass(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 MyAgent = model2.Agent(initial_int_sal=np.arange(2.), hab_slowness=arg, verbose=VERBOSE)
 
+        # bad failure_rate arguments
+        learning_speed_args = [False, '0.5', [0.5], (0.4, 0.2), np.array(0.4), -0.1, 2.0]
+        for arg in learning_speed_args:
+            with self.assertRaises(AssertionError):
+                MyAgent = model2.Agent(failure_rate=arg, verbose=VERBOSE)
+
         # bad T_max arguments
         T_max_args = ['2', [2], (2,2), np.array([2]), False, 2.0]
         for arg in T_max_args:
@@ -118,6 +124,7 @@ class TestAgentClass(unittest.TestCase):
     def test_environment_response_output(self):
         # test output of environment_response method
 
+        """
         MyAgent = model2.Agent(initial_int_sal=np.arange(10.), verbose=VERBOSE)
         for i_action in xrange(10):
             response = MyAgent.environment_response(i_action)
@@ -125,6 +132,15 @@ class TestAgentClass(unittest.TestCase):
             self.assertIsNotNone(response)
             self.assertIsInstance(response, int)
             self.assertIn(response, range(2))
+        """
+        MyAgent = model2.Agent(initial_int_sal=np.arange(10.), failure_rate=1.0,
+            verbose=VERBOSE)
+        for i_action in xrange(10):
+            response = MyAgent.environment_response(i_action)
+
+            self.assertIsNotNone(response)
+            self.assertIsInstance(response, int)
+            self.assertEqual(response, 0)
 
 
 
@@ -328,7 +344,7 @@ class TestAgentClass(unittest.TestCase):
         self.assertIsInstance(data, dict)
 
         keys = ['exploration_rate', 'learning_speed', 'hab_slowness', 'i_select',
-            'env_response', 'int_sal', 'nov_sal', 'tot_sal', 'probs']
+            'env_response', 'int_sal', 'nov_sal', 'tot_sal', 'probs', 'failure_rate']
         data_keys = data.keys()        
 
         self.assertEqual(len(data_keys), len(keys))  
@@ -405,7 +421,7 @@ class TestAgentClass(unittest.TestCase):
         self.assertIsInstance(data, dict)
 
         test_keys = ['exploration_rate', 'learning_speed', 'hab_slowness', 'i_select',
-            'env_response', 'int_sal', 'nov_sal', 'tot_sal', 'probs']
+            'env_response', 'int_sal', 'nov_sal', 'tot_sal', 'probs', 'failure_rate']
         data_keys = data.keys()
 
         self.assertIsNotNone(data_keys)
