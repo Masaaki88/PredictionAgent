@@ -1,5 +1,5 @@
 '''
-unit test for model2 v1.1, 17/07/11, by Max Murakami
+unit test for model2 v1.1.1, 17/07/11, by Max Murakami
 '''
 
 import numpy as np
@@ -62,9 +62,9 @@ class TestAgentClass(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 MyAgent = model2.Agent(initial_int_sal=np.arange(2.), response_probs=arg, verbose=VERBOSE)
 
-        #  triggered_int_sal must be non-negative float ndarray with shape ((2),) or ((2),(2))
-        triggered_int_sal_args = [True, '0.5, 0.5', [0.5, 0.5], (0.4, 0.2), np.array(['0.4','0.5']), np.array([False, False]),
-            0.5, np.array([1, 1]), np.array([-0.4,0.4]), np.array([0.1]), np.ones([2,3])]
+        #  triggered_int_sal must be float ndarray with shape ((2),) or ((2),(2))
+        triggered_int_sal_args = [True, '0.5, 0.5', [0.5, 0.5], (0.4, 0.2), np.array(['0.4','0.5']), 
+            np.array([False, False]), 0.5, np.array([1, 1]), np.array([0.1]), np.ones([2,3])]
         for arg in triggered_int_sal_args:
             with self.assertRaises(AssertionError):
                 MyAgent = model2.Agent(initial_int_sal=np.arange(2.), triggered_int_sal=arg, verbose=VERBOSE)
@@ -399,6 +399,32 @@ class TestAgentClass(unittest.TestCase):
         self.assertTrue(np.isfinite(int_sal).all())
         self.assertAlmostEqual(int_sal[0], 3.5)
         self.assertAlmostEqual(int_sal[1], 4.5)
+
+        # heterogenous triggered_int_sal with negative elements
+        triggered_int_sal = np.array([[1.5,-2.5],[-3.5,4.5]])
+        MyAgent = model2.Agent(initial_int_sal=initial_int_sal, exploration_rate=exploration_rate,
+            triggered_int_sal=triggered_int_sal, response_probs=response_probs, verbose=VERBOSE)
+
+        MyAgent.environment_response(i_action=0)
+        int_sal = MyAgent.int_sal
+        self.assertIsNotNone(int_sal)
+        self.assertIsInstance(int_sal, np.ndarray)
+        self.assertEqual(int_sal.dtype, float)
+        self.assertEqual(int_sal.shape, (2,))
+        self.assertTrue(np.isfinite(int_sal).all())
+        self.assertAlmostEqual(int_sal[0], 1.5)
+        self.assertAlmostEqual(int_sal[1], 1.0)
+
+        MyAgent.environment_response(i_action=1)
+        int_sal = MyAgent.int_sal
+        self.assertIsNotNone(int_sal)
+        self.assertIsInstance(int_sal, np.ndarray)
+        self.assertEqual(int_sal.dtype, float)
+        self.assertEqual(int_sal.shape, (2,))
+        self.assertTrue(np.isfinite(int_sal).all())
+        self.assertAlmostEqual(int_sal[0], 1.5) # retain int_sal from previous update
+        self.assertAlmostEqual(int_sal[1], 4.5)
+
 
 
     def test_environment_response_output(self):

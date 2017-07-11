@@ -1,5 +1,5 @@
 '''
-model2.py, v1.1, 17/07/11, by Max Murakami
+model2.py, v1.1.1, 17/07/11, by Max Murakami
     written in Python 2.7.12
 
 Agent class for simulating action selection with intrinsic motivation based on
@@ -25,7 +25,7 @@ Usage:
             -> ndarray with shape (N_actions,) and float elements in [0;1]
         - triggered_int_sal: if specified, contains for each contingent response new intrinsic
             salience values for each action
-            -> ndarray with shape (N_actions, N_action) and non-negative float elements
+            -> ndarray with shape (N_actions, N_action) and float elements
     - run() the object. Simulation data are returned as dictionary.
     - Free parameters:
         - exploration_rate: the higher, the more likely the agent executes actions
@@ -49,6 +49,9 @@ Other files:
         - output.dat contains pickled dictionary with variables and constants
 
 Version history:
+    - 1.1.1:
+        - triggered_int_sal can now contain negative elements for actions whose intrinsic saliences
+            should not be updated
     - 1.1:
         - made environment response to actions more general
             -> replaced failure_rate by response_probs, which govern contingency probabilities
@@ -99,6 +102,7 @@ class Agent:
             type is ndarray with shape (number of actions,) if salience changes are equal for all
             responses or (number of actions, number of actions) if salience changes differ for
             different responses,
+            put negative numbers where saliences should not be updated
             default is False
         T_max is number of time steps (int), default is 1e4
         verbose is verbose output mode
@@ -283,9 +287,6 @@ class Agent:
             assert np.isfinite(triggered_int_sal).all(),\
                 "\nInput 'triggered_int_sal' ({}) of Agent constructor contains invalid elements!"\
                 "".format(triggered_int_sal)
-            assert (triggered_int_sal >= 0.0).all(),\
-                "\nInput 'triggered_int_sal' ({}) of Agent constructor has invalid elements!"\
-                "\nElements must be non-negative!".format(triggered_int_sal)
             
             if triggered_int_sal.ndim == 1:     # convert 1d input to general 2d array
                 triggered_int_sal = triggered_int_sal.repeat(self.N_actions)
@@ -444,7 +445,10 @@ class Agent:
                     self.random_numbers[self.t], self.failure_rate)
             if aux.isNotFalse(self.triggered_int_sal):  # response triggers change of intrinsic 
                                                         #  saliences
-                self.int_sal = self.triggered_int_sal[i_action]
+                for action_index in xrange(self.N_actions):
+                    if self.triggered_int_sal[i_action][action_index] >= 0.0:
+                        self.int_sal[action_index] = self.triggered_int_sal[i_action][action_index]
+                    # don't update intrinsic salience if triggerd_int_sal element is negative
             return 1
         else:
             if self.verbose:

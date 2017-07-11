@@ -1,4 +1,4 @@
-model2.py, v1.1, 17/07/11, by Max Murakami
+model2.py, v1.1.1, 17/07/11, by Max Murakami
     written in Python 2.7.12
 
 Agent class for simulating action selection with intrinsic motivation based on
@@ -24,7 +24,7 @@ Usage:
             -> ndarray with shape (N_actions,) and float elements in [0;1]
         - triggered_int_sal: if specified, contains for each contingent response new intrinsic
             salience values for each action
-            -> ndarray with shape (N_actions, N_action) and non-negative float elements
+            -> ndarray with shape (N_actions, N_action) and float elements
     - run() the object. Simulation data are returned as dictionary.
     - Free parameters:
         - exploration_rate: the higher, the more likely the agent executes actions
@@ -48,6 +48,9 @@ Other files:
         - output.dat contains pickled dictionary with variables and constants
 
 Version history:
+    - 1.1.1:
+        - triggered_int_sal can now contain negative elements for actions whose intrinsic saliences
+            should not be updated
     - 1.1:
         - made environment response to actions more general
             -> replaced failure_rate by response_probs, which govern contingency probabilities
