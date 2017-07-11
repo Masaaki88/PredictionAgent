@@ -1,4 +1,4 @@
-model2.py, v1.0.3.0, 17/07/07, by Max Murakami
+model2.py, v1.1, 17/07/11, by Max Murakami
     written in Python 2.7.12
 
 Agent class for simulating action selection with intrinsic motivation based on
@@ -13,11 +13,18 @@ Agent class for simulating action selection with intrinsic motivation based on
 
 Usage:
     - Specify contingencies in environment_response() method.
-    - During construction, specify either initial intrinsic action saliences
-        (initial_int_sal), initial prediction variables (initial_probs), or both.
-        Both initial_int_sal and initial_probs must be 1 dimensional float ndarrays.
-        Their length determines the number of actions (lengths must match if both
-        are specified).
+    - During construction, specify:
+        - either initial intrinsic action saliences (initial_int_sal), initial 
+            prediction variables (initial_probs), or both.
+            Both initial_int_sal and initial_probs must be 1 dimensional float ndarrays.
+            Their length determines the number of actions (lengths must match if both
+            are specified).
+        - response_probs: the probabilities for each action to trigger a contingent environment
+            response
+            -> ndarray with shape (N_actions,) and float elements in [0;1]
+        - triggered_int_sal: if specified, contains for each contingent response new intrinsic
+            salience values for each action
+            -> ndarray with shape (N_actions, N_action) and non-negative float elements
     - run() the object. Simulation data are returned as dictionary.
     - Free parameters:
         - exploration_rate: the higher, the more likely the agent executes actions
@@ -27,8 +34,6 @@ Usage:
         - hab_slowness: the higher, the less intrinsic saliences decrease due to habituation
             -> time constant of intrinsic salience
             (accepts different values for each action, specify as ndarray)
-        - failure_rate: the probability that a contingent environment response is not delivered
-            -> float in [0;1]
     - These command line arguments are available if you run this script from the terminal:
         - v: turns on verbose mode
         - o: turns on file output mode
@@ -43,6 +48,13 @@ Other files:
         - output.dat contains pickled dictionary with variables and constants
 
 Version history:
+    - 1.1:
+        - made environment response to actions more general
+            -> replaced failure_rate by response_probs, which govern contingency probabilities
+                for each action
+        - environment response can now trigger changes in intrinsic action saliences
+            -> added triggered_int_sal, which govern intrinsic saliences as result of contingent
+                response to specific actions
     - 1.0.3:
         - added failure_rate
     - 1.0.2.2:

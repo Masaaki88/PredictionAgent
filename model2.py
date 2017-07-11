@@ -1,5 +1,5 @@
 '''
-model2.py, v1.0.3.0, 17/07/07, by Max Murakami
+model2.py, v1.1, 17/07/11, by Max Murakami
     written in Python 2.7.12
 
 Agent class for simulating action selection with intrinsic motivation based on
@@ -14,11 +14,18 @@ Agent class for simulating action selection with intrinsic motivation based on
 
 Usage:
     - Specify contingencies in environment_response() method.
-    - During construction, specify either initial intrinsic action saliences
-        (initial_int_sal), initial prediction variables (initial_probs), or both.
-        Both initial_int_sal and initial_probs must be 1 dimensional float ndarrays.
-        Their length determines the number of actions (lengths must match if both
-        are specified).
+    - During construction, specify:
+        - either initial intrinsic action saliences (initial_int_sal), initial 
+            prediction variables (initial_probs), or both.
+            Both initial_int_sal and initial_probs must be 1 dimensional float ndarrays.
+            Their length determines the number of actions (lengths must match if both
+            are specified).
+        - response_probs: the probabilities for each action to trigger a contingent environment
+            response
+            -> ndarray with shape (N_actions,) and float elements in [0;1]
+        - triggered_int_sal: if specified, contains for each contingent response new intrinsic
+            salience values for each action
+            -> ndarray with shape (N_actions, N_action) and non-negative float elements
     - run() the object. Simulation data are returned as dictionary.
     - Free parameters:
         - exploration_rate: the higher, the more likely the agent executes actions
@@ -28,8 +35,6 @@ Usage:
         - hab_slowness: the higher, the less intrinsic saliences decrease due to habituation
             -> time constant of intrinsic salience
             (accepts different values for each action, specify as ndarray)
-        - failure_rate: the probability that a contingent environment response is not delivered
-            -> float in [0;1]
     - These command line arguments are available if you run this script from the terminal:
         - v: turns on verbose mode
         - o: turns on file output mode
@@ -44,6 +49,13 @@ Other files:
         - output.dat contains pickled dictionary with variables and constants
 
 Version history:
+    - 1.1:
+        - made environment response to actions more general
+            -> replaced failure_rate by response_probs, which govern contingency probabilities
+                for each action
+        - environment response can now trigger changes in intrinsic action saliences
+            -> added triggered_int_sal, which govern intrinsic saliences as result of contingent
+                response to specific actions
     - 1.0.3:
         - added failure_rate
     - 1.0.2.2:
@@ -60,14 +72,14 @@ Version history:
 
 import numpy as np
 import aux      # auxillary functions
-import cPickle
-import copy
+import cPickle  # file output
+import copy     # for deep copies of data dicts
 
 
 class Agent:
     def __init__(self, initial_int_sal=None, initial_probs=None, exploration_rate=1.,
-        learning_speed=0.9, hab_slowness=0.9, failure_rate=0.0, T_max=int(1e4),
-        verbose=False, output=False):
+        learning_speed=0.9, hab_slowness=0.9, response_probs=None, T_max=int(1e4),
+        triggered_int_sal=None, verbose=False, output=False):
         '''
         constructor
 
@@ -80,8 +92,14 @@ class Agent:
         learning_speed is adaptation rate of prediction system (float), default is 0.9
         hab_slowness is factor for action habituation (float or ndarray), default is 0.9,
             high means slow habituation, low means fast habituation
-        failure_rate is probability with which a contingent response fails to be delivered
-            type is float, default is 0.0
+        response_probs contains probabilities with which responses are triggered by actions,
+            type is ndarray with probability value for each action, default is np.ones([4])
+        triggered_int_sal specifies intrinsic salience values for each action triggered by
+            contingent environment responses,
+            type is ndarray with shape (number of actions,) if salience changes are equal for all
+            responses or (number of actions, number of actions) if salience changes differ for
+            different responses,
+            default is False
         T_max is number of time steps (int), default is 1e4
         verbose is verbose output mode
             type is boolean, default is True
@@ -101,8 +119,10 @@ class Agent:
                 print ' learning_speed:', learning_speed
             if isinstance(hab_slowness, np.ndarray) or hab_slowness!=0.9:
                 print ' hab_slowness:', hab_slowness
-            if isinstance(failure_rate, np.ndarray) or failure_rate!=0.0:
-                print ' failure_rate:', failure_rate
+            if isinstance(response_probs, np.ndarray) or response_probs:
+                print ' response_probs:', response_probs
+            if isinstance(triggered_int_sal, np.ndarray) or triggered_int_sal:
+                print ' triggered_int_sal:', triggered_int_sal
             if isinstance(T_max, np.ndarray) or T_max != 1e4:
                 print ' T_max:', T_max
 
@@ -207,11 +227,13 @@ class Agent:
         assert isinstance(hab_slowness, float) or isinstance(hab_slowness, np.ndarray),\
             "\nInput 'hab_slowness' ({}) of Agent constructor has wrong type ({})!"\
             "\nType must be 'float' or 'ndarray'!".format(hab_slowness, type(hab_slowness))
+
         if isinstance(hab_slowness, float):
             assert hab_slowness > 0.0 and hab_slowness < 1.0,\
                 "\nInput 'hab_slowness' ({}) of Agent constructor is out of bounds!"\
                 "\nhab_slowness must be in ]0;1[!".format(hab_slowness)
             hab_slowness = np.ones([self.N_actions]) * hab_slowness
+
         elif isinstance(hab_slowness, np.ndarray):
             aux.check_that_1d_float_array(hab_slowness, 'hab_slowness')
             assert len(hab_slowness) == self.N_actions,\
@@ -226,16 +248,53 @@ class Agent:
 
 
 
-            ####### failure_rate
-        assert aux.isNotFalse(failure_rate)
-        assert isinstance(failure_rate, float),\
-            "\nInput 'failure_rate' ({}) of Agent constructor has wrong type ({})!"\
-            "\nType must be 'float'!".format(failure_rate, type(failure_rate))
-        assert failure_rate >= 0.0 and failure_rate <= 1.0,\
-            "\nInput 'failure_rate' ({}) is invalid!"\
-            "\nfailure_rate must be in [0.0; 1.0]!".format(failure_rate)
+            ####### response_probs
+        if aux.isNotFalse(response_probs):
+            aux.check_that_1d_float_array(response_probs, 'response_probs')
+            assert len(response_probs) == self.N_actions,\
+                "\nInput 'response_probs' ({}) of Agent constructor doesn't match number "\
+                "of actions!\nLength is {} and must be {}!".format(response_probs, len(response_probs),
+                    self.N_actions)
+            assert (response_probs >= 0.0).all() and (response_probs <= 1.0).all(),\
+                "\nInput 'response_probs' ({}) of Agent constructor contains invalid elements!"\
+                "\nElements must be in [0.0; 1.0]!".format(response_probs)
 
-        self.failure_rate = failure_rate
+            self.response_probs = response_probs
+        else:
+            self.response_probs = np.ones([self.N_actions])
+
+
+
+            ####### triggered_int_sal
+        if aux.isNotFalse(triggered_int_sal):
+            assert isinstance(triggered_int_sal, np.ndarray),\
+                "\nInput 'triggered_int_sal' ({}) of Agent constructor has wrong type ({})!"\
+                "\nType must be 'ndarray'!".format(triggered_int_sal, type(triggered_int_sal))
+            assert triggered_int_sal.ndim in [1,2],\
+                "\nInput 'triggered_int_sal' ({}) of Agent constructor has wrong dimension ({})!"\
+                "\nDimension must be either 1 or 2!".format(triggered_int_sal, triggered_int_sal.ndim)
+            assert triggered_int_sal.shape in [(self.N_actions,), (self.N_actions, self.N_actions)],\
+                "\nInput 'triggered_int_sal' ({}) of Agent constructor has wrong shape ({})!"\
+                "\nShape must be either ({},) or ({}, {})!".format(triggered_int_sal,
+                    triggered_int_sal.shape, self.N_actions, self.N_actions, self.N_actions)
+            assert triggered_int_sal.dtype == float,\
+                "\nInput 'triggered_int_sal' ({}) of Agent constructor has wrong dtype ({})!"\
+                "\nDtype must be 'float'!".format(triggered_int_sal, triggered_int_sal.dtype)
+            assert np.isfinite(triggered_int_sal).all(),\
+                "\nInput 'triggered_int_sal' ({}) of Agent constructor contains invalid elements!"\
+                "".format(triggered_int_sal)
+            assert (triggered_int_sal >= 0.0).all(),\
+                "\nInput 'triggered_int_sal' ({}) of Agent constructor has invalid elements!"\
+                "\nElements must be non-negative!".format(triggered_int_sal)
+            
+            if triggered_int_sal.ndim == 1:     # convert 1d input to general 2d array
+                triggered_int_sal = triggered_int_sal.repeat(self.N_actions)
+                triggered_int_sal = triggered_int_sal.reshape(self.N_actions, self.N_actions)
+                self.triggered_int_sal = triggered_int_sal.swapaxes(0,1)
+            elif triggered_int_sal.ndim == 2:
+                self.triggered_int_sal = triggered_int_sal
+        else:
+            self.triggered_int_sal = False
 
 
 
@@ -262,7 +321,7 @@ class Agent:
         # dictionary for storing all data
         self.data = {'exploration_rate':self.exploration_rate,
             'learning_speed':self.learning_speed, 'hab_slowness':self.hab_slowness,
-            'failure_rate':self.failure_rate}
+            'response_probs':self.response_probs, 'triggered_int_sal':self.triggered_int_sal}
         for label in ['int_sal', 'nov_sal', 'tot_sal', 'probs']:
             self.data.update({label:np.zeros([self.N_actions, self.T_max])})
         for label in ['i_select', 'env_response']:
@@ -288,10 +347,16 @@ class Agent:
 
                 # write constants
             outputfile_txt_const.write('Start time:\t{}\nExploration rate:\t{}\nLearning speed:\t{}'\
-                '\nFailure rate:\t{}\nHabituation slowness:'.format(time_string, self.exploration_rate,
+                '\nHabituation slowness:'.format(time_string, self.exploration_rate,
                 self.learning_speed, self.failure_rate))
             for i_action in xrange(self.N_actions):
                 outputfile_txt_const.write('\t{}'.format(self.hab_slowness[i_action]))
+            outputfile_txt_const.write('\nResponse probabilities:')
+            for i_action in xrange(self.N_actions):
+                outputfile_txt_const.write('\t{}'.format(self.response_probs[i_action]))
+            outputfile_txt_const.write('\nTriggered intrinsic saliences:')
+            for i_action in xrange(self.N_action):
+                outputfile_txt_const.write('\t{}'.format(self.triggered_int_sal[i_action]))
             outputfile_txt_const.close()
 
 
@@ -313,7 +378,8 @@ class Agent:
             print 'exploration_rate:', self.exploration_rate
             print 'learning_speed:', self.learning_speed
             print 'hab_slowness:', self.hab_slowness
-            print 'failure_rate:', self.failure_rate
+            print 'response_probs:', self.response_probs
+            print 'triggered_int_sal:', self.triggered_int_sal
             print 'T_max:', self.T_max
             print 'output:', self.output
             print 'Start time is', time_string
@@ -356,7 +422,8 @@ class Agent:
 
     def environment_response(self, i_action):
         '''
-        determine environmental response to Agent's chosen action
+        determine environmental response to Agent's chosen action and
+            possibly update intrinsic saliences
 
         i_action is index of selected action (int)
 
@@ -371,18 +438,18 @@ class Agent:
             "\nInput 'i_action' ({}) of environment_response() has wrong value!"\
             "\ni_action must be in range({})!".format(i_action, self.N_actions)
 
-        if i_action == 1:
-            if self.random_numbers[self.t] >= self.failure_rate:
-                if self.verbose:
-                    print 'Contingent response succeeds ({} >= {})'.format(self.random_numbers[self.t],
-                        self.failure_rate)
-                return 1
-            else:
-                if self.verbose:
-                    print 'Contingent response fails ({} < {})'.format(self.random_numbers[self.t],
-                        self.failure_rate)
-                return 0
+        if self.random_numbers[self.t] <= self.response_probs[i_action]:
+            if self.verbose:
+                print 'Contingent response for action {} succeeds ({} >= {})'.format(i_action,
+                    self.random_numbers[self.t], self.failure_rate)
+            if aux.isNotFalse(self.triggered_int_sal):  # response triggers change of intrinsic 
+                                                        #  saliences
+                self.int_sal = self.triggered_int_sal[i_action]
+            return 1
         else:
+            if self.verbose:
+                print 'Contingent response fails ({} < {})'.format(self.random_numbers[self.t],
+                    self.failure_rate)
             return 0
 
 
