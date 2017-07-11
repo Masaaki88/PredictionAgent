@@ -49,8 +49,8 @@ Other files:
 
 Version history:
     - 1.1.1:
-        - triggered_int_sal can now contain negative elements for actions whose intrinsic saliences
-            should not be updated
+        - triggered_int_sal can now contain negative elements for actions whose intrinsic 
+            saliences should not be updated
     - 1.1:
         - made environment response to actions more general
             -> replaced failure_rate by response_probs, which govern contingency probabilities
