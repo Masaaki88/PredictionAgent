@@ -77,6 +77,7 @@ import numpy as np
 import aux      # auxillary functions
 import cPickle  # file output
 import copy     # for deep copies of data dicts
+import os
 
 
 class Agent:
@@ -330,6 +331,7 @@ class Agent:
 
         if output:
             # output files are created in ./output/[date]/[time]/
+            os.system('touch {}output.txt'.format(outputpath))
             self.outputfile_txt = open('{}output.txt'.format(outputpath), 'w')
             outputfile_txt_const = open('{}output_constants.txt'.format(outputpath), 'w')
             self.outputfilename_dat = '{}output.dat'.format(outputpath)
@@ -349,15 +351,18 @@ class Agent:
                 # write constants
             outputfile_txt_const.write('Start time:\t{}\nExploration rate:\t{}\nLearning speed:\t{}'\
                 '\nHabituation slowness:'.format(time_string, self.exploration_rate,
-                self.learning_speed, self.failure_rate))
+                self.learning_speed))
             for i_action in xrange(self.N_actions):
                 outputfile_txt_const.write('\t{}'.format(self.hab_slowness[i_action]))
             outputfile_txt_const.write('\nResponse probabilities:')
             for i_action in xrange(self.N_actions):
                 outputfile_txt_const.write('\t{}'.format(self.response_probs[i_action]))
             outputfile_txt_const.write('\nTriggered intrinsic saliences:')
-            for i_action in xrange(self.N_action):
-                outputfile_txt_const.write('\t{}'.format(self.triggered_int_sal[i_action]))
+            if aux.isNotFalse(self.triggered_int_sal):
+                for i_action in xrange(self.N_actions):
+                    outputfile_txt_const.write('\t{}'.format(self.triggered_int_sal[i_action]))
+            else:
+                outputfile_txt_const.write('\tNone')
             outputfile_txt_const.close()
 
 
@@ -441,8 +446,8 @@ class Agent:
 
         if self.random_numbers[self.t] <= self.response_probs[i_action]:
             if self.verbose:
-                print 'Contingent response for action {} succeeds ({} >= {})'.format(i_action,
-                    self.random_numbers[self.t], self.failure_rate)
+                print 'Contingent response for action {} succeeds ({} <= {})'.format(i_action,
+                    self.random_numbers[self.t], self.response_probs[i_action])
             if aux.isNotFalse(self.triggered_int_sal):  # response triggers change of intrinsic 
                                                         #  saliences
                 for action_index in xrange(self.N_actions):

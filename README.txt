@@ -1,4 +1,4 @@
-model2.py, v1.1.1, 17/07/11, by Max Murakami
+model2.py, v1.1.2, 17/09/19, by Max Murakami
     written in Python 2.7.12
 
 Agent class for simulating action selection with intrinsic motivation based on
@@ -48,6 +48,8 @@ Other files:
         - output.dat contains pickled dictionary with variables and constants
 
 Version history:
+    - 1.1.2:
+        - fixed bugs in output and verbose modes
     - 1.1.1:
         - triggered_int_sal can now contain negative elements for actions whose intrinsic 
             saliences should not be updated

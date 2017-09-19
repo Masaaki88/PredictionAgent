@@ -71,8 +71,8 @@ def get_outputpath():
     time_string is string of simulation start time
     '''
     cwd = os.getcwd()
-    if cwd[-6:] != 'model2':
-        cwd += '/model2'
+ #   if cwd[-6:] != 'model2':
+ #       cwd += '/model2'
     dt_now = datetime.datetime.now()
     today = '{}-{}-{}'.format(dt_now.year, dt_now.month, dt_now.day)
     t_0 = '{}:{}:{}'.format(dt_now.hour, dt_now.minute, dt_now.second)
@@ -84,7 +84,7 @@ def get_outputpath():
         try:
             os.mkdir(path_string)
         except:
-            pass
+           pass
         
     time_string = '{} {}'.format(today, t_0)
 
